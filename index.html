@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Poster Creator Suite</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">Marketing GPT Enterprise</p>
+          <h1>Poster Creator Suite</h1>
+        </div>
+        <nav>
+          <button class="nav active" data-view="designer">Designer</button>
+          <button class="nav" data-view="copy">Copywriter</button>
+          <button class="nav" data-view="google">Google</button>
+          <button class="nav" data-view="gallery">Gallery</button>
+        </nav>
+      </aside>
+
+      <section class="workspace">
+        <section id="designer" class="view active">
+          <div class="toolbar">
+            <div>
+              <p class="eyebrow">AI poster generator</p>
+              <h2>Create a campaign poster</h2>
+            </div>
+            <button id="saveProfile" class="secondary">Save Profile</button>
+          </div>
+
+          <div class="grid">
+            <form id="posterForm" class="panel">
+              <label>Google Business Profile
+                <select name="selectedProfile" id="designerProfileSelect">
+                  <option value="">Manual business details</option>
+                </select>
+              </label>
+              <label>Business name<input name="businessName" placeholder="Elite Dental Studio" /></label>
+              <label>Industry<input name="industry" placeholder="Dental clinic" /></label>
+              <label>Location<input name="location" placeholder="Austin, TX" /></label>
+              <label>Offer or topic<textarea name="topic" placeholder="Teeth whitening summer offer"></textarea></label>
+              <label>Style<input name="style" placeholder="premium, clean, bright, trustworthy" /></label>
+              <label>Preferred colors<input name="colors" placeholder="white, teal, charcoal" /></label>
+              <label>Business logo<input name="logo" type="file" accept="image/*" /></label>
+              <label>Reference image<input name="referenceImage" type="file" accept="image/*" /></label>
+              <button type="submit">Generate Poster</button>
+            </form>
+
+            <div class="preview panel">
+              <div id="posterStatus" class="status">Your generated poster will appear here.</div>
+              <img id="posterImage" alt="Generated poster" />
+              <div class="actions">
+                <a id="downloadPoster" class="secondary hidden" download="poster.png">Download</a>
+                <button id="savePoster" class="secondary hidden">Save to Gallery</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="copy" class="view">
+          <div class="toolbar">
+            <div>
+              <p class="eyebrow">Caption and keywords</p>
+              <h2>Generate local SEO copy</h2>
+            </div>
+          </div>
+          <div class="grid two">
+            <form id="copyForm" class="panel">
+              <label>Business name<input name="businessName" /></label>
+              <label>Industry<input name="industry" /></label>
+              <label>Location<input name="location" /></label>
+              <label>Topic<textarea name="topic"></textarea></label>
+              <button type="submit">Generate Copy</button>
+            </form>
+            <pre id="copyOutput" class="panel output">Generated caption, keywords, and hashtags will appear here.</pre>
+          </div>
+        </section>
+
+        <section id="google" class="view">
+          <div class="toolbar">
+            <div>
+              <p class="eyebrow">Google Business Profile</p>
+              <h2>Connect and post</h2>
+            </div>
+            <a class="secondary" href="/api/google-auth">Connect Gmail</a>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <button id="loadLocations" type="button">Load Business Profiles</button>
+              <div id="locationsList" class="locations">Connect Gmail, then load your profiles.</div>
+            </div>
+            <form id="postForm" class="panel">
+              <label>Selected profile<input name="locationName" readonly placeholder="Choose a profile on the left" /></label>
+              <input name="accountName" type="hidden" />
+              <label>Caption<textarea name="summary" placeholder="Paste or write your post caption"></textarea></label>
+              <label>Public poster image URL<input name="imageUrl" placeholder="https://example.com/poster.png" /></label>
+              <label>Button action
+                <select name="actionType">
+                  <option value="LEARN_MORE">Learn more</option>
+                  <option value="BOOK">Book</option>
+                  <option value="ORDER">Order</option>
+                  <option value="SHOP">Shop</option>
+                  <option value="SIGN_UP">Sign up</option>
+                  <option value="CALL">Call</option>
+                </select>
+              </label>
+              <label>Button URL<input name="buttonUrl" placeholder="https://yourwebsite.com" /></label>
+              <button type="submit">Post to Google</button>
+              <p id="postStatus" class="status"></p>
+            </form>
+          </div>
+        </section>
+
+        <section id="gallery" class="view">
+          <div class="toolbar">
+            <div>
+              <p class="eyebrow">Saved work</p>
+              <h2>Poster gallery</h2>
+            </div>
+            <button id="clearGallery" class="secondary">Clear Gallery</button>
+          </div>
+          <div id="galleryGrid" class="gallery"></div>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
