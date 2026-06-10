@@ -1,4 +1,9 @@
-const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
+const configuredModel = process.env.GEMINI_IMAGE_MODEL;
+const IMAGE_MODEL =
+  configuredModel && configuredModel !== "gemini-2.5-flash-image-preview"
+    ? configuredModel
+    : "gemini-2.5-flash-image";
+const IMAGE_PROVIDER = process.env.IMAGE_PROVIDER || "auto";
 
 function json(res, status, body) {
   res.statusCode = status;
@@ -12,31 +17,54 @@ function cleanDataUrl(value) {
   return match ? { mimeType: match[1], data: match[2] } : null;
 }
 
+function buildPrompt(body) {
+  return [
+    "Create a polished social media poster for a local business.",
+    "The poster should look premium, readable, modern, and ready for Google Business Profile or Instagram.",
+    `Business name: ${body.businessName || "Local Business"}`,
+    `Industry: ${body.industry || "Local service business"}`,
+    `Offer or topic: ${body.topic || "Promotional update"}`,
+    `Location: ${body.location || "Local area"}`,
+    `Style: ${body.style || "clean, high-converting, professional"}`,
+    body.colors ? `Preferred colors: ${body.colors}` : "",
+    "Include short headline-style text, leave good spacing, and avoid clutter."
+  ].filter(Boolean).join("\n");
+}
+
+function pollinationsImage(prompt) {
+  const params = new URLSearchParams({
+    width: "1024",
+    height: "1024",
+    nologo: "true",
+    enhance: "true",
+    seed: String(Date.now())
+  });
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params.toString()}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { error: "Method not allowed" });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  if (!apiKey && IMAGE_PROVIDER !== "pollinations") {
     return json(res, 500, { error: "GEMINI_API_KEY is not configured in Vercel." });
   }
 
   try {
     const body = req.body || {};
+    const prompt = buildPrompt(body);
+
+    if (IMAGE_PROVIDER === "pollinations") {
+      return json(res, 200, {
+        image: pollinationsImage(prompt),
+        note: "Generated with Pollinations."
+      });
+    }
+
     const logo = cleanDataUrl(body.logo);
     const reference = cleanDataUrl(body.referenceImage);
-    const prompt = [
-      "Create a polished social media poster for a local business.",
-      "The poster should look premium, readable, modern, and ready for Google Business Profile or Instagram.",
-      `Business name: ${body.businessName || "Local Business"}`,
-      `Industry: ${body.industry || "Local service business"}`,
-      `Offer or topic: ${body.topic || "Promotional update"}`,
-      `Location: ${body.location || "Local area"}`,
-      `Style: ${body.style || "clean, high-converting, professional"}`,
-      body.colors ? `Preferred colors: ${body.colors}` : "",
-      "Include short headline-style text, leave good spacing, and avoid clutter."
-    ].filter(Boolean).join("\n");
 
     const parts = [{ text: prompt }];
     if (logo) parts.push({ inlineData: logo });
@@ -56,8 +84,15 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     if (!response.ok) {
+      const message = data.error?.message || "Poster generation failed.";
+      if (IMAGE_PROVIDER === "auto" && /quota|not found|not supported|rate/i.test(message)) {
+        return json(res, 200, {
+          image: pollinationsImage(prompt),
+          note: `Gemini was unavailable, so this used Pollinations instead. Gemini said: ${message}`
+        });
+      }
       return json(res, response.status, {
-        error: data.error?.message || "Poster generation failed.",
+        error: message,
         model: IMAGE_MODEL
       });
     }
