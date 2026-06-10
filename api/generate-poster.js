@@ -34,6 +34,103 @@ function buildPrompt(body) {
   ].filter(Boolean).join("\n");
 }
 
+function buildBackgroundPrompt(body) {
+  return [
+    "Create a premium abstract marketing poster background for a local business.",
+    "No words, no letters, no numbers, no logo, no readable text.",
+    `Industry: ${body.industry || "local business"}`,
+    `Style: ${body.style || "clean, premium, modern"}`,
+    body.colors ? `Color palette: ${body.colors}` : "",
+    "Leave clean space in the center for text overlay."
+  ].filter(Boolean).join("\n");
+}
+
+function safeText(value, fallback, max = 90) {
+  return String(value || fallback).replace(/[<>]/g, "").slice(0, max);
+}
+
+function escapeSvg(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function wrapLines(text, maxChars, maxLines) {
+  const words = safeText(text, "", 160).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = "";
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.slice(0, maxLines);
+}
+
+function posterOverlaySvg(body) {
+  const business = wrapLines(body.businessName || "Local Business", 18, 3);
+  const topic = wrapLines(body.topic || "New offer available now", 28, 3);
+  const location = wrapLines(body.location || "", 42, 2);
+  const businessSize = business.length > 2 ? 72 : 86;
+  const topicSize = topic.length > 2 ? 40 : 48;
+
+  const businessText = business.map((line, index) =>
+    `<text x="512" y="${244 + index * (businessSize + 8)}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${businessSize}" font-weight="900" fill="#ffffff">${escapeSvg(line)}</text>`
+  ).join("");
+  const topicText = topic.map((line, index) =>
+    `<text x="512" y="${572 + index * (topicSize + 8)}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${topicSize}" font-weight="800" fill="#12312d">${escapeSvg(line)}</text>`
+  ).join("");
+  const locationText = location.map((line, index) =>
+    `<text x="512" y="${842 + index * 34}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#e5f7f5">${escapeSvg(line)}</text>`
+  ).join("");
+
+  return Buffer.from(`
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="shade" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#000000" stop-opacity=".62"/>
+      <stop offset=".45" stop-color="#000000" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#000000" stop-opacity=".58"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#shade)"/>
+  <rect x="86" y="96" width="852" height="832" rx="42" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="6"/>
+  <rect x="130" y="118" width="764" height="330" rx="34" fill="#0f172a" opacity=".78"/>
+  ${businessText}
+  <rect x="130" y="490" width="764" height="190" rx="28" fill="#f8fafc" opacity=".94"/>
+  ${topicText}
+  <rect x="302" y="724" width="420" height="76" rx="38" fill="#0f766e"/>
+  <text x="512" y="774" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="900" fill="#ffffff">Contact Us Today</text>
+  ${locationText}
+</svg>`);
+}
+
+async function textSafePosterFromBuffer(backgroundBuffer, body) {
+  const sharp = (await import("sharp")).default;
+  const base = backgroundBuffer
+    ? sharp(backgroundBuffer).resize(1024, 1024, { fit: "cover" })
+    : sharp({
+        create: {
+          width: 1024,
+          height: 1024,
+          channels: 4,
+          background: "#0f766e"
+        }
+      });
+
+  return await base
+    .composite([{ input: posterOverlaySvg(body), top: 0, left: 0 }])
+    .png()
+    .toBuffer();
+}
+
 function pollinationsImage(prompt) {
   const compactPrompt = prompt
     .replace(/\s+/g, " ")
@@ -61,7 +158,7 @@ async function uploadToBlob(buffer, contentType = "image/png") {
   return blob.url;
 }
 
-async function generateWithCloudflare(prompt) {
+async function generateWithCloudflare(prompt, body) {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) {
@@ -77,7 +174,7 @@ async function generateWithCloudflare(prompt) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        prompt,
+        prompt: buildBackgroundPrompt(body),
         width: 1024,
         height: 1024,
         num_steps: 4
@@ -94,8 +191,9 @@ async function generateWithCloudflare(prompt) {
   }
 
   if (contentType.startsWith("image/")) {
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return await uploadToBlob(buffer, contentType);
+    const backgroundBuffer = Buffer.from(await response.arrayBuffer());
+    const posterBuffer = await textSafePosterFromBuffer(backgroundBuffer, body);
+    return await uploadToBlob(posterBuffer, "image/png");
   }
 
   const data = await response.json();
@@ -108,8 +206,9 @@ async function generateWithCloudflare(prompt) {
     throw new Error("Cloudflare did not return an image.");
   }
 
-  const buffer = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), "base64");
-  return await uploadToBlob(buffer, "image/png");
+  const backgroundBuffer = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), "base64");
+  const posterBuffer = await textSafePosterFromBuffer(backgroundBuffer, body);
+  return await uploadToBlob(posterBuffer, "image/png");
 }
 
 async function generateWithOpenAI(prompt) {
@@ -162,10 +261,10 @@ export default async function handler(req, res) {
 
     if (IMAGE_PROVIDER === "cloudflare" || (IMAGE_PROVIDER === "auto" && process.env.CLOUDFLARE_API_TOKEN)) {
       try {
-        const image = await generateWithCloudflare(prompt);
+        const image = await generateWithCloudflare(prompt, body);
         return json(res, 200, {
           image,
-          note: "Generated with Cloudflare Workers AI and stored in Vercel Blob."
+          note: "Generated with Cloudflare Workers AI background, exact text overlay, and stored in Vercel Blob."
         });
       } catch (error) {
         if (IMAGE_PROVIDER === "cloudflare") {
