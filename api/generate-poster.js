@@ -31,15 +31,19 @@ function dataUrlToBuffer(value) {
 
 function buildPrompt(body) {
   return [
-    "Create a polished social media poster for a local business.",
-    "The poster should look premium, readable, modern, and ready for Google Business Profile or Instagram.",
+    "Create a polished square social media poster for a local business.",
+    "Use the provided reference image as the main style/layout inspiration.",
+    "Use the provided business logo if available.",
+    "Make the poster premium, readable, modern, and ready for Google Business Profile or Instagram.",
+    "Do not invent fake phone numbers, addresses, ratings, badges, or nonsense words.",
     `Business name: ${body.businessName || "Local Business"}`,
     `Industry: ${body.industry || "Local service business"}`,
     `Offer or topic: ${body.topic || "Promotional update"}`,
     `Location: ${body.location || "Local area"}`,
     `Style: ${body.style || "clean, high-converting, professional"}`,
     body.colors ? `Preferred colors: ${body.colors}` : "",
-    "Include short headline-style text, leave good spacing, and avoid clutter."
+    "Use only the exact business details above for any readable text.",
+    "Keep text minimal, large, and clean."
   ].filter(Boolean).join("\n");
 }
 
@@ -287,6 +291,53 @@ async function generateWithOpenAI(prompt) {
   return blobUrl;
 }
 
+async function generateEditWithOpenAI(prompt, assets) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is required for reference-image poster generation.");
+  }
+  if (!assets.referenceBuffer) {
+    throw new Error("Reference image is required for image-to-image generation.");
+  }
+
+  const form = new FormData();
+  form.set("model", OPENAI_IMAGE_MODEL);
+  form.set("prompt", prompt);
+  form.set("size", "1024x1024");
+  form.append(
+    "image[]",
+    new Blob([assets.referenceBuffer], { type: assets.referenceMimeType || "image/png" }),
+    "reference.png"
+  );
+  if (assets.logoBuffer) {
+    form.append(
+      "image[]",
+      new Blob([assets.logoBuffer], { type: assets.logoMimeType || "image/png" }),
+      "logo.png"
+    );
+  }
+
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: form
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || "OpenAI image edit failed.");
+  }
+
+  const item = data.data?.[0];
+  if (item?.url) return item.url;
+  if (!item?.b64_json) throw new Error("OpenAI did not return an edited image.");
+
+  const buffer = Buffer.from(item.b64_json, "base64");
+  return await uploadToBlob(buffer, "image/png");
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { error: "Method not allowed" });
@@ -304,8 +355,25 @@ export default async function handler(req, res) {
     const referenceAsset = dataUrlToBuffer(body.referenceImage);
     const assets = {
       logoBuffer: logoAsset?.buffer,
-      referenceBuffer: referenceAsset?.buffer
+      logoMimeType: logoAsset?.mimeType,
+      referenceBuffer: referenceAsset?.buffer,
+      referenceMimeType: referenceAsset?.mimeType
     };
+
+    if (referenceAsset) {
+      try {
+        const image = await generateEditWithOpenAI(prompt, assets);
+        return json(res, 200, {
+          image,
+          note: "Generated with OpenAI image-to-image using your reference image and logo, then stored in Vercel Blob."
+        });
+      } catch (error) {
+        return json(res, 500, {
+          error: error.message,
+          hint: "Reference-image generation needs OPENAI_API_KEY. Without it, remove the reference image and use Cloudflare mode."
+        });
+      }
+    }
 
     if (IMAGE_PROVIDER === "cloudflare" || (IMAGE_PROVIDER === "auto" && process.env.CLOUDFLARE_API_TOKEN)) {
       try {
