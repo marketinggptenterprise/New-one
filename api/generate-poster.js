@@ -71,6 +71,8 @@ function escapeSvg(value) {
     .replace(/"/g, "&quot;");
 }
 
+const FONT_STACK = "DejaVu Sans, Liberation Sans, Arial, sans-serif";
+
 function wrapLines(text, maxChars, maxLines) {
   const words = safeText(text, "", 160).split(/\s+/).filter(Boolean);
   const lines = [];
@@ -89,21 +91,21 @@ function wrapLines(text, maxChars, maxLines) {
 }
 
 function posterOverlaySvg(body) {
-  const business = wrapLines(body.businessName || "Local Business", 18, 3);
+  const business = wrapLines(body.businessName || "Local Business", 20, 3);
   const industry = safeText(body.industry || "Local business", "Local business", 44);
-  const topic = wrapLines(body.topic || "New offer available now", 28, 3);
-  const location = wrapLines(body.location || "", 42, 2);
-  const businessSize = business.length > 2 ? 72 : 86;
-  const topicSize = topic.length > 2 ? 40 : 48;
+  const topic = wrapLines(body.topic || "New offer available now", 30, 3);
+  const location = wrapLines(body.location || "", 46, 2);
+  const businessSize = business.length > 2 ? 64 : 78;
+  const topicSize = topic.length > 2 ? 38 : 46;
 
   const businessText = business.map((line, index) =>
-    `<text x="512" y="${244 + index * (businessSize + 8)}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${businessSize}" font-weight="900" fill="#ffffff">${escapeSvg(line)}</text>`
+    `<text x="512" y="${230 + index * (businessSize + 8)}" text-anchor="middle" font-family="${FONT_STACK}" font-size="${businessSize}" font-weight="900" fill="#ffffff">${escapeSvg(line)}</text>`
   ).join("");
   const topicText = topic.map((line, index) =>
-    `<text x="512" y="${572 + index * (topicSize + 8)}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${topicSize}" font-weight="800" fill="#12312d">${escapeSvg(line)}</text>`
+    `<text x="512" y="${548 + index * (topicSize + 8)}" text-anchor="middle" font-family="${FONT_STACK}" font-size="${topicSize}" font-weight="800" fill="#12312d">${escapeSvg(line)}</text>`
   ).join("");
   const locationText = location.map((line, index) =>
-    `<text x="512" y="${842 + index * 34}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#e5f7f5">${escapeSvg(line)}</text>`
+    `<text x="512" y="${840 + index * 34}" text-anchor="middle" font-family="${FONT_STACK}" font-size="28" font-weight="700" fill="#e5f7f5">${escapeSvg(line)}</text>`
   ).join("");
 
   return Buffer.from(`
@@ -116,14 +118,14 @@ function posterOverlaySvg(body) {
     </linearGradient>
   </defs>
   <rect width="1024" height="1024" fill="url(#shade)"/>
-  <rect x="86" y="96" width="852" height="832" rx="42" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="6"/>
-  <rect x="130" y="118" width="764" height="330" rx="34" fill="#0f172a" opacity=".78"/>
-  <text x="512" y="178" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="800" fill="#7dd3fc">${escapeSvg(industry.toUpperCase())}</text>
+  <rect x="72" y="72" width="880" height="880" rx="46" fill="none" stroke="#ffffff" stroke-opacity=".78" stroke-width="6"/>
+  <rect x="118" y="122" width="788" height="314" rx="34" fill="#0f172a" opacity=".86"/>
+  <text x="512" y="174" text-anchor="middle" font-family="${FONT_STACK}" font-size="26" font-weight="800" fill="#7dd3fc">${escapeSvg(industry.toUpperCase())}</text>
   ${businessText}
-  <rect x="130" y="490" width="764" height="190" rx="28" fill="#f8fafc" opacity=".94"/>
+  <rect x="118" y="482" width="788" height="190" rx="28" fill="#f8fafc" opacity=".96"/>
   ${topicText}
   <rect x="302" y="724" width="420" height="76" rx="38" fill="#0f766e"/>
-  <text x="512" y="774" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="900" fill="#ffffff">Contact Us Today</text>
+  <text x="512" y="774" text-anchor="middle" font-family="${FONT_STACK}" font-size="32" font-weight="900" fill="#ffffff">Contact Us Today</text>
   ${locationText}
 </svg>`);
 }
@@ -155,8 +157,8 @@ async function textSafePosterFromBuffer(backgroundBuffer, body, assets = {}) {
   if (logo) {
     composites.push({
       input: logo,
-      top: 132,
-      left: 742
+      top: 146,
+      left: 756
     });
   }
 
@@ -194,11 +196,6 @@ async function uploadToBlob(buffer, contentType = "image/png") {
 }
 
 async function generateWithCloudflare(prompt, body, assets = {}) {
-  if (assets.referenceBuffer) {
-    const posterBuffer = await textSafePosterFromBuffer(assets.referenceBuffer, body, assets);
-    return await uploadToBlob(posterBuffer, "image/png");
-  }
-
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) {
@@ -214,7 +211,12 @@ async function generateWithCloudflare(prompt, body, assets = {}) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        prompt: buildBackgroundPrompt(body),
+        prompt: [
+          buildBackgroundPrompt(body),
+          assets.referenceBuffer
+            ? "Use the uploaded reference only as design inspiration: similar mood, colors, and composition, but do not copy any text from it."
+            : ""
+        ].filter(Boolean).join("\n"),
         width: 1024,
         height: 1024,
         num_steps: 4
