@@ -17,6 +17,7 @@
         <nav>
           <button class="nav active" data-view="designer">Designer</button>
           <button class="nav" data-view="copy">Copywriter</button>
+          <button class="nav" data-view="multipost">Multi-Post</button>
           <button class="nav" data-view="google">Google</button>
           <button class="nav" data-view="gallery">Gallery</button>
         </nav>
@@ -77,6 +78,43 @@
               <button type="submit">Generate Copy</button>
             </form>
             <pre id="copyOutput" class="panel output">Generated caption, keywords, and hashtags will appear here.</pre>
+          </div>
+        </section>
+
+        <section id="multipost" class="view">
+          <div class="toolbar">
+            <div>
+              <p class="eyebrow">One-click publishing</p>
+              <h2>Post to Facebook and Google</h2>
+            </div>
+          </div>
+          <div class="grid two">
+            <form id="multiPostForm" class="panel">
+              <label>Caption<textarea name="summary" placeholder="Write the post caption for Facebook and Google"></textarea></label>
+              <label>Image URL<input name="imageUrl" placeholder="Upload an image below or paste a public JPG/PNG/WebP URL" /></label>
+              <label>Upload image<input name="multiUpload" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+              <button id="multiUploadButton" class="secondary" type="button">Upload Image</button>
+              <label>Facebook Page ID<input name="facebookPageId" placeholder="1234567890" /></label>
+              <label>Facebook Page Access Token<input name="facebookPageAccessToken" type="password" placeholder="EAAB..." /></label>
+              <label>Button action
+                <select name="actionType">
+                  <option value="LEARN_MORE">Learn more</option>
+                  <option value="BOOK">Book</option>
+                  <option value="ORDER">Order</option>
+                  <option value="SHOP">Shop</option>
+                  <option value="SIGN_UP">Sign up</option>
+                  <option value="CALL">Call</option>
+                </select>
+              </label>
+              <label>Button URL<input name="buttonUrl" placeholder="Optional: https://yourwebsite.com" /></label>
+              <button type="submit">Post to Facebook + Google</button>
+            </form>
+            <div class="panel">
+              <button id="loadMultiLocations" type="button">Load Google Profiles</button>
+              <p class="hint">Select every Google Business Profile that should receive this post.</p>
+              <div id="multiLocationsList" class="locations">Connect Gmail first, then load profiles.</div>
+              <pre id="multiPostStatus" class="output compact">Posting results will appear here.</pre>
+            </div>
           </div>
         </section>
 

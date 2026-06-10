@@ -18,6 +18,7 @@ const storage = {
 
 let currentPoster = "";
 let googleLocations = [];
+let multiSelectedLocations = [];
 
 function formData(form) {
   return Object.fromEntries(new FormData(form).entries());
@@ -95,6 +96,23 @@ function updateDesignerProfiles() {
   select.value = currentValue;
 }
 
+function renderMultiLocations() {
+  const list = $("#multiLocationsList");
+  if (!googleLocations.length) {
+    list.textContent = "No Google Business Profile locations loaded yet.";
+    return;
+  }
+  list.innerHTML = googleLocations.map((location, index) => {
+    const selected = multiSelectedLocations.some((item) => item.locationName === location.name);
+    return `
+      <button class="location ${selected ? "selected" : ""}" type="button" data-index="${index}">
+        <strong>${location.title || location.name}</strong>
+        <small>${location.address || location.name}</small>
+      </button>
+    `;
+  }).join("");
+}
+
 function applyGoogleProfile(location) {
   const posterForm = $("#posterForm");
   const postForm = $("#postForm");
@@ -122,6 +140,7 @@ function setPoster(image) {
   $("#savePoster").classList.remove("hidden");
   if (absoluteImage.startsWith("http")) {
     $("#postForm").elements.imageUrl.value = absoluteImage;
+    $("#multiPostForm").elements.imageUrl.value = absoluteImage;
     $("#postStatus").textContent = "Generated poster URL added. You can post it from the Google tab.";
   } else {
     $("#postStatus").textContent = "Generated poster is downloadable. To post it to Google, upload it somewhere public and paste the image URL.";
@@ -185,6 +204,7 @@ $("#loadLocations").addEventListener("click", async () => {
     const result = await getJson("/api/google-locations");
     googleLocations = result.locations || [];
     updateDesignerProfiles();
+    renderMultiLocations();
     if (!result.locations.length) {
       list.textContent = "No Google Business Profile locations were found for this account.";
       return;
@@ -195,6 +215,19 @@ $("#loadLocations").addEventListener("click", async () => {
         <small>${location.address || location.name}</small>
       </button>
     `).join("");
+  } catch (error) {
+    list.textContent = error.message;
+  }
+});
+
+$("#loadMultiLocations").addEventListener("click", async () => {
+  const list = $("#multiLocationsList");
+  list.textContent = "Loading profiles...";
+  try {
+    const result = await getJson("/api/google-locations");
+    googleLocations = result.locations || [];
+    updateDesignerProfiles();
+    renderMultiLocations();
   } catch (error) {
     list.textContent = error.message;
   }
@@ -215,6 +248,24 @@ $("#designerProfileSelect").addEventListener("change", (event) => {
   if (index === "") return;
   const location = googleLocations[Number(index)];
   if (location) applyGoogleProfile(location);
+});
+
+$("#multiLocationsList").addEventListener("click", (event) => {
+  const button = event.target.closest(".location");
+  if (!button) return;
+  const location = googleLocations[Number(button.dataset.index)];
+  if (!location) return;
+  const existing = multiSelectedLocations.findIndex((item) => item.locationName === location.name);
+  if (existing >= 0) {
+    multiSelectedLocations.splice(existing, 1);
+  } else {
+    multiSelectedLocations.push({
+      title: location.title,
+      locationName: location.name,
+      accountName: location.accountName
+    });
+  }
+  renderMultiLocations();
 });
 
 $("#postForm").addEventListener("submit", async (event) => {
@@ -244,6 +295,59 @@ $("#uploadPosterImage").addEventListener("click", async () => {
     $("#postStatus").textContent = "Image uploaded. You can post it to Google now.";
   } catch (error) {
     $("#postStatus").textContent = error.message;
+  }
+});
+
+$("#multiUploadButton").addEventListener("click", async () => {
+  const form = $("#multiPostForm");
+  const file = form.elements.multiUpload.files[0];
+  if (!file) {
+    $("#multiPostStatus").textContent = "Choose a PNG, JPG, or WebP image first.";
+    return;
+  }
+
+  $("#multiPostStatus").textContent = "Uploading image...";
+  try {
+    const image = await fileToDataUrl(file);
+    const result = await postJson("/api/upload-image", { image });
+    form.elements.imageUrl.value = result.url;
+    $("#multiPostStatus").textContent = "Image uploaded. Ready to post.";
+  } catch (error) {
+    $("#multiPostStatus").textContent = error.message;
+  }
+});
+
+const savedFacebook = JSON.parse(localStorage.getItem("pcs.facebook") || "{}");
+fillForm($("#multiPostForm"), savedFacebook);
+
+$("#multiPostForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const payload = {
+    ...formData(form),
+    googleTargets: multiSelectedLocations
+  };
+
+  localStorage.setItem("pcs.facebook", JSON.stringify({
+    facebookPageId: payload.facebookPageId,
+    facebookPageAccessToken: payload.facebookPageAccessToken
+  }));
+
+  if (!payload.summary && !payload.imageUrl) {
+    $("#multiPostStatus").textContent = "Add a caption or image before posting.";
+    return;
+  }
+  if (!payload.facebookPageId && !multiSelectedLocations.length) {
+    $("#multiPostStatus").textContent = "Add Facebook Page details or select at least one Google profile.";
+    return;
+  }
+
+  $("#multiPostStatus").textContent = "Posting to Facebook and Google...";
+  try {
+    const result = await postJson("/api/multi-post", payload);
+    $("#multiPostStatus").textContent = JSON.stringify(result, null, 2);
+  } catch (error) {
+    $("#multiPostStatus").textContent = error.message;
   }
 });
 
