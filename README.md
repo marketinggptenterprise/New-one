@@ -26,3 +26,14 @@ The app uses browser storage for profiles and gallery history, so it does not ne
 Google Business Profile posting requires your Google Cloud OAuth app to have access to the Google Business Profile APIs and the `https://www.googleapis.com/auth/business.manage` scope.
 
 For direct image posting, create/connect a Vercel Blob store in your Vercel project. New Vercel Blob projects may use OIDC and show `BLOB_STORE_ID` instead of a visible read-write token.
+
+## Facebook + Google Multi-Post
+
+The Multi-Post tab can publish one caption/image to a Facebook Page and selected Google Business Profile locations.
+
+For Facebook, paste:
+
+- Facebook Page ID
+- Facebook Page Access Token with permission to publish Page posts/photos
+
+The simple version uses a manually pasted Page token. A full Facebook Login + Page selector can be added later.
