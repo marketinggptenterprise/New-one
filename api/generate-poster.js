@@ -20,6 +20,15 @@ function cleanDataUrl(value) {
   return match ? { mimeType: match[1], data: match[2] } : null;
 }
 
+function dataUrlToBuffer(value) {
+  const parsed = cleanDataUrl(value);
+  if (!parsed?.mimeType?.startsWith("image/")) return null;
+  return {
+    mimeType: parsed.mimeType,
+    buffer: Buffer.from(parsed.data, "base64")
+  };
+}
+
 function buildPrompt(body) {
   return [
     "Create a polished social media poster for a local business.",
@@ -36,12 +45,17 @@ function buildPrompt(body) {
 
 function buildBackgroundPrompt(body) {
   return [
-    "Create a premium abstract marketing poster background for a local business.",
-    "No words, no letters, no numbers, no logo, no readable text.",
+    "Create a premium commercial poster background for a local business advertisement.",
+    "No words, no letters, no numbers, no logo, no signage, no readable text.",
+    "Use realistic, brand-safe visuals that fit the business category.",
+    "Leave clean open space for a headline, offer, logo, and contact details.",
+    `Business name for context only, do not render it: ${body.businessName || "Local Business"}`,
     `Industry: ${body.industry || "local business"}`,
+    `Offer context: ${body.topic || "promotional update"}`,
+    `Location context: ${body.location || "local area"}`,
     `Style: ${body.style || "clean, premium, modern"}`,
     body.colors ? `Color palette: ${body.colors}` : "",
-    "Leave clean space in the center for text overlay."
+    "Professional social media design, high contrast, polished lighting."
   ].filter(Boolean).join("\n");
 }
 
@@ -76,6 +90,7 @@ function wrapLines(text, maxChars, maxLines) {
 
 function posterOverlaySvg(body) {
   const business = wrapLines(body.businessName || "Local Business", 18, 3);
+  const industry = safeText(body.industry || "Local business", "Local business", 44);
   const topic = wrapLines(body.topic || "New offer available now", 28, 3);
   const location = wrapLines(body.location || "", 42, 2);
   const businessSize = business.length > 2 ? 72 : 86;
@@ -103,6 +118,7 @@ function posterOverlaySvg(body) {
   <rect width="1024" height="1024" fill="url(#shade)"/>
   <rect x="86" y="96" width="852" height="832" rx="42" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="6"/>
   <rect x="130" y="118" width="764" height="330" rx="34" fill="#0f172a" opacity=".78"/>
+  <text x="512" y="178" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="800" fill="#7dd3fc">${escapeSvg(industry.toUpperCase())}</text>
   ${businessText}
   <rect x="130" y="490" width="764" height="190" rx="28" fill="#f8fafc" opacity=".94"/>
   ${topicText}
@@ -112,7 +128,16 @@ function posterOverlaySvg(body) {
 </svg>`);
 }
 
-async function textSafePosterFromBuffer(backgroundBuffer, body) {
+async function prepareLogo(buffer) {
+  if (!buffer) return null;
+  const sharp = (await import("sharp")).default;
+  return await sharp(buffer)
+    .resize(150, 150, { fit: "inside", withoutEnlargement: true })
+    .png()
+    .toBuffer();
+}
+
+async function textSafePosterFromBuffer(backgroundBuffer, body, assets = {}) {
   const sharp = (await import("sharp")).default;
   const base = backgroundBuffer
     ? sharp(backgroundBuffer).resize(1024, 1024, { fit: "cover" })
@@ -125,8 +150,18 @@ async function textSafePosterFromBuffer(backgroundBuffer, body) {
         }
       });
 
+  const composites = [{ input: posterOverlaySvg(body), top: 0, left: 0 }];
+  const logo = await prepareLogo(assets.logoBuffer);
+  if (logo) {
+    composites.push({
+      input: logo,
+      top: 132,
+      left: 742
+    });
+  }
+
   return await base
-    .composite([{ input: posterOverlaySvg(body), top: 0, left: 0 }])
+    .composite(composites)
     .png()
     .toBuffer();
 }
@@ -158,7 +193,12 @@ async function uploadToBlob(buffer, contentType = "image/png") {
   return blob.url;
 }
 
-async function generateWithCloudflare(prompt, body) {
+async function generateWithCloudflare(prompt, body, assets = {}) {
+  if (assets.referenceBuffer) {
+    const posterBuffer = await textSafePosterFromBuffer(assets.referenceBuffer, body, assets);
+    return await uploadToBlob(posterBuffer, "image/png");
+  }
+
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) {
@@ -192,7 +232,7 @@ async function generateWithCloudflare(prompt, body) {
 
   if (contentType.startsWith("image/")) {
     const backgroundBuffer = Buffer.from(await response.arrayBuffer());
-    const posterBuffer = await textSafePosterFromBuffer(backgroundBuffer, body);
+    const posterBuffer = await textSafePosterFromBuffer(backgroundBuffer, body, assets);
     return await uploadToBlob(posterBuffer, "image/png");
   }
 
@@ -207,7 +247,7 @@ async function generateWithCloudflare(prompt, body) {
   }
 
   const backgroundBuffer = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), "base64");
-  const posterBuffer = await textSafePosterFromBuffer(backgroundBuffer, body);
+  const posterBuffer = await textSafePosterFromBuffer(backgroundBuffer, body, assets);
   return await uploadToBlob(posterBuffer, "image/png");
 }
 
@@ -251,20 +291,28 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey && IMAGE_PROVIDER !== "pollinations") {
+  if (!apiKey && !["pollinations", "cloudflare", "openai"].includes(IMAGE_PROVIDER)) {
     return json(res, 500, { error: "GEMINI_API_KEY is not configured in Vercel." });
   }
 
   try {
     const body = req.body || {};
     const prompt = buildPrompt(body);
+    const logoAsset = dataUrlToBuffer(body.logo);
+    const referenceAsset = dataUrlToBuffer(body.referenceImage);
+    const assets = {
+      logoBuffer: logoAsset?.buffer,
+      referenceBuffer: referenceAsset?.buffer
+    };
 
     if (IMAGE_PROVIDER === "cloudflare" || (IMAGE_PROVIDER === "auto" && process.env.CLOUDFLARE_API_TOKEN)) {
       try {
-        const image = await generateWithCloudflare(prompt, body);
+        const image = await generateWithCloudflare(prompt, body, assets);
         return json(res, 200, {
           image,
-          note: "Generated with Cloudflare Workers AI background, exact text overlay, and stored in Vercel Blob."
+          note: referenceAsset
+            ? "Created from your reference image, logo, exact business details, and stored in Vercel Blob."
+            : "Generated with Cloudflare Workers AI background, logo, exact business details, and stored in Vercel Blob."
         });
       } catch (error) {
         if (IMAGE_PROVIDER === "cloudflare") {
