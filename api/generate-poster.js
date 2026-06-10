@@ -36,15 +36,16 @@ function pollinationsImage(prompt) {
     .replace(/\s+/g, " ")
     .replace(/Business name:/g, "Business:")
     .replace(/Offer or topic:/g, "Offer:")
-    .slice(0, 700);
+    .slice(0, 360);
   const params = new URLSearchParams({
+    prompt: compactPrompt,
     width: "1024",
     height: "1024",
     nologo: "true",
     enhance: "true",
     seed: String(Date.now())
   });
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(compactPrompt)}?${params.toString()}`;
+  return `/api/render-poster?${params.toString()}`;
 }
 
 export default async function handler(req, res) {

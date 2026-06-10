@@ -21,14 +21,15 @@ export default async function handler(req, res) {
       topicType: "STANDARD"
     };
 
-    if (body.imageUrl) {
+    if (body.imageUrl && /^https:\/\//i.test(body.imageUrl)) {
       post.media = [{ mediaFormat: "PHOTO", sourceUrl: body.imageUrl }];
     }
 
-    if (body.buttonUrl) {
+    const buttonUrl = String(body.buttonUrl || "").trim();
+    if (buttonUrl && /^https:\/\//i.test(buttonUrl) && !buttonUrl.includes("yourwebsite.com")) {
       post.callToAction = {
         actionType: body.actionType || "LEARN_MORE",
-        url: body.buttonUrl
+        url: buttonUrl
       };
     }
 
