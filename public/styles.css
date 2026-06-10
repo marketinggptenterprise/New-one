@@ -63,6 +63,13 @@ h1 {
   line-height: 1.05;
 }
 
+.version {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 h2 {
   font-size: 26px;
 }
@@ -192,6 +199,13 @@ textarea {
   text-align: center;
 }
 
+.hint {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 #posterImage {
   display: none;
   max-width: 100%;
@@ -254,9 +268,29 @@ textarea {
   display: grid;
   gap: 10px;
   margin-top: 14px;
-  max-height: 560px;
-  overflow-y: auto;
-  padding-right: 6px;
+  height: 430px;
+  max-height: 58vh;
+  overflow-y: scroll;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.locations::-webkit-scrollbar {
+  width: 12px;
+}
+
+.locations::-webkit-scrollbar-track {
+  background: #e7edf2;
+  border-radius: 999px;
+}
+
+.locations::-webkit-scrollbar-thumb {
+  background: var(--brand);
+  border-radius: 999px;
 }
 
 .location {
