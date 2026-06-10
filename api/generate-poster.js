@@ -32,6 +32,11 @@ function buildPrompt(body) {
 }
 
 function pollinationsImage(prompt) {
+  const compactPrompt = prompt
+    .replace(/\s+/g, " ")
+    .replace(/Business name:/g, "Business:")
+    .replace(/Offer or topic:/g, "Offer:")
+    .slice(0, 700);
   const params = new URLSearchParams({
     width: "1024",
     height: "1024",
@@ -39,7 +44,7 @@ function pollinationsImage(prompt) {
     enhance: "true",
     seed: String(Date.now())
   });
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params.toString()}`;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(compactPrompt)}?${params.toString()}`;
 }
 
 export default async function handler(req, res) {
