@@ -228,6 +228,25 @@ $("#postForm").addEventListener("submit", async (event) => {
   }
 });
 
+$("#uploadPosterImage").addEventListener("click", async () => {
+  const form = $("#postForm");
+  const file = form.elements.posterUpload.files[0];
+  if (!file) {
+    $("#postStatus").textContent = "Choose a PNG, JPG, or WebP image first.";
+    return;
+  }
+
+  $("#postStatus").textContent = "Uploading image...";
+  try {
+    const image = await fileToDataUrl(file);
+    const result = await postJson("/api/upload-image", { image });
+    form.elements.imageUrl.value = result.url;
+    $("#postStatus").textContent = "Image uploaded. You can post it to Google now.";
+  } catch (error) {
+    $("#postStatus").textContent = error.message;
+  }
+});
+
 $("#clearGallery").addEventListener("click", () => {
   if (!confirm("Clear all saved posters from this browser?")) return;
   storage.gallery = [];

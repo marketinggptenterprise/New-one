@@ -98,7 +98,9 @@
               <input name="accountName" type="hidden" />
               <label>Caption<textarea name="summary" placeholder="Paste or write your post caption"></textarea></label>
               <label>Public poster image URL<input name="imageUrl" placeholder="https://example.com/poster.png" /></label>
-              <p class="hint">Pollinations posters are added here automatically. Downloaded images must be uploaded somewhere public before Google can attach them.</p>
+              <label>Upload poster image<input name="posterUpload" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+              <button id="uploadPosterImage" class="secondary" type="button">Upload Image to Vercel Blob</button>
+              <p class="hint">Google accepts public JPG, PNG, or WebP image URLs. Built-in preview posters can be downloaded, but direct image posting needs a hosted image URL.</p>
               <label>Button action
                 <select name="actionType">
                   <option value="LEARN_MORE">Learn more</option>
