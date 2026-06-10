@@ -1,5 +1,17 @@
 import { googleFetch, json } from "./_google.js";
 
+async function isUsableImage(url) {
+  if (!/^https:\/\//i.test(url)) return false;
+  if (url.includes("/api/render-poster")) return false;
+  try {
+    const response = await fetch(url, { method: "GET" });
+    const type = response.headers.get("content-type") || "";
+    return response.ok && /^image\/(png|jpe?g|webp)/i.test(type);
+  } catch {
+    return false;
+  }
+}
+
 function localPostPath(locationName) {
   const match = String(locationName || "").match(/^locations\/(.+)$/);
   if (!match) return null;
@@ -21,7 +33,7 @@ export default async function handler(req, res) {
       topicType: "STANDARD"
     };
 
-    if (body.imageUrl && /^https:\/\//i.test(body.imageUrl)) {
+    if (body.imageUrl && await isUsableImage(String(body.imageUrl).trim())) {
       post.media = [{ mediaFormat: "PHOTO", sourceUrl: body.imageUrl }];
     }
 
