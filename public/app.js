@@ -107,8 +107,9 @@ function applyGoogleProfile(location) {
 }
 
 function setPoster(image) {
-  currentPoster = image;
-  $("#posterImage").src = image;
+  const absoluteImage = image.startsWith("/") ? `${location.origin}${image}` : image;
+  currentPoster = absoluteImage;
+  $("#posterImage").src = absoluteImage;
   $("#posterImage").onerror = () => {
     $("#posterStatus").style.display = "block";
     $("#posterStatus").textContent = "The image provider returned a link that could not be displayed. Try Generate Poster again.";
@@ -116,11 +117,11 @@ function setPoster(image) {
   };
   $("#posterImage").style.display = "block";
   $("#posterStatus").style.display = "none";
-  $("#downloadPoster").href = image;
+  $("#downloadPoster").href = absoluteImage;
   $("#downloadPoster").classList.remove("hidden");
   $("#savePoster").classList.remove("hidden");
-  if (image.startsWith("http")) {
-    $("#postForm").elements.imageUrl.value = image;
+  if (absoluteImage.startsWith("http")) {
+    $("#postForm").elements.imageUrl.value = absoluteImage;
     $("#postStatus").textContent = "Generated poster URL added. You can post it from the Google tab.";
   } else {
     $("#postStatus").textContent = "Generated poster is downloadable. To post it to Google, upload it somewhere public and paste the image URL.";
