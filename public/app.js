@@ -144,8 +144,51 @@ function renderGoogleLocations(list, locations) {
     <button class="location" type="button" data-index="${index}">
       <strong>${location.title || location.name}</strong>
       <small>${location.address || location.name}</small>
+      <small>${location.phone ? "Call available" : ""}${location.phone && location.websiteUri ? " | " : ""}${location.websiteUri ? "Website button available" : ""}</small>
     </button>
   `).join("");
+}
+
+function setSelectOptions(select, options) {
+  select.innerHTML = options.map((option) => (
+    `<option value="${option.value}">${option.label}</option>`
+  )).join("");
+}
+
+function applyBusinessPostActions(location) {
+  const form = $("#postForm");
+  const actionSelect = form.elements.actionType;
+  const buttonUrlInput = form.elements.buttonUrl;
+  const options = [{ value: "NONE", label: "No button" }];
+
+  if (location.phone) options.push({ value: "CALL", label: `Call (${location.phone})` });
+  if (location.websiteUri) {
+    options.push(
+      { value: "LEARN_MORE", label: "Learn more" },
+      { value: "BOOK", label: "Book" },
+      { value: "ORDER", label: "Order" },
+      { value: "SHOP", label: "Shop" },
+      { value: "SIGN_UP", label: "Sign up" }
+    );
+  }
+
+  setSelectOptions(actionSelect, options);
+  if (location.phone) {
+    actionSelect.value = "CALL";
+    buttonUrlInput.value = "";
+    buttonUrlInput.disabled = true;
+    buttonUrlInput.placeholder = "Call button uses the phone number on this Google profile";
+  } else if (location.websiteUri) {
+    actionSelect.value = "LEARN_MORE";
+    buttonUrlInput.disabled = false;
+    buttonUrlInput.value = location.websiteUri;
+    buttonUrlInput.placeholder = location.websiteUri;
+  } else {
+    actionSelect.value = "NONE";
+    buttonUrlInput.value = "";
+    buttonUrlInput.disabled = true;
+    buttonUrlInput.placeholder = "No phone or website found for this profile";
+  }
 }
 
 function reviewDisplayName(review) {
@@ -282,6 +325,23 @@ $("#locationsList").addEventListener("click", (event) => {
   const form = $("#postForm");
   form.elements.locationName.value = location.name;
   form.elements.accountName.value = location.accountName;
+  applyBusinessPostActions(location);
+  $("#postStatus").textContent = location.phone
+    ? "Call button selected automatically because this profile has a phone number."
+    : location.websiteUri
+      ? "Learn more button selected automatically using this profile's website."
+      : "No button selected because this profile has no phone or website.";
+});
+
+$("#postForm").elements.actionType.addEventListener("change", (event) => {
+  const form = $("#postForm");
+  const buttonUrlInput = form.elements.buttonUrl;
+  if (event.target.value === "CALL" || event.target.value === "NONE") {
+    buttonUrlInput.disabled = true;
+    buttonUrlInput.value = "";
+  } else {
+    buttonUrlInput.disabled = false;
+  }
 });
 
 $("#reviewsList").addEventListener("click", (event) => {
