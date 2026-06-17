@@ -17,7 +17,7 @@ export default async function handler(req, res) {
       let pageToken = "";
       do {
         const params = new URLSearchParams({
-          readMask: "name,title,storefrontAddress,metadata",
+          readMask: "name,title,storefrontAddress,metadata,phoneNumbers,websiteUri",
           pageSize: "100"
         });
         if (pageToken) params.set("pageToken", pageToken);
@@ -26,11 +26,23 @@ export default async function handler(req, res) {
         const data = await googleFetch(req, res, url);
 
         for (const location of data.locations || []) {
+          const phone = location.phoneNumbers?.primaryPhone || "";
+          const websiteUri = location.websiteUri || "";
           locations.push({
             name: location.name,
             title: location.title,
             address: formatAddress(location.storefrontAddress),
-            accountName: account.name
+            accountName: account.name,
+            phone,
+            websiteUri,
+            availableActions: [
+              phone ? "CALL" : "",
+              websiteUri ? "LEARN_MORE" : "",
+              websiteUri ? "BOOK" : "",
+              websiteUri ? "ORDER" : "",
+              websiteUri ? "SHOP" : "",
+              websiteUri ? "SIGN_UP" : ""
+            ].filter(Boolean)
           });
         }
 

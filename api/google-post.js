@@ -37,10 +37,15 @@ export default async function handler(req, res) {
       post.media = [{ mediaFormat: "PHOTO", sourceUrl: body.imageUrl }];
     }
 
+    const actionType = String(body.actionType || "").trim();
     const buttonUrl = String(body.buttonUrl || "").trim();
-    if (buttonUrl && /^https:\/\//i.test(buttonUrl) && !buttonUrl.includes("yourwebsite.com")) {
+    if (actionType === "CALL") {
       post.callToAction = {
-        actionType: body.actionType || "LEARN_MORE",
+        actionType: "CALL"
+      };
+    } else if (actionType && actionType !== "NONE" && buttonUrl && /^https:\/\//i.test(buttonUrl) && !buttonUrl.includes("yourwebsite.com")) {
+      post.callToAction = {
+        actionType,
         url: buttonUrl
       };
     }
