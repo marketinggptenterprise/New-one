@@ -42,6 +42,7 @@ Strict output rules:
 - Do not add bullet points.
 - Do not add separate SEO keyword lists.
 - Do not add explanations.
+- Naturally include important local SEO keyword phrases inside the caption sentence, such as service + city, business category + area, and nearby/local terms.
 - Include 5 to 8 relevant hashtags naturally at the end of the same caption.
 - Keep the full caption under 700 characters.
 - Use a useful, natural, non-spammy tone.
