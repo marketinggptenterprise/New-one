@@ -7,17 +7,11 @@ const storage = {
   },
   set profile(value) {
     localStorage.setItem("pcs.profile", JSON.stringify(value));
-  },
-  get gallery() {
-    return JSON.parse(localStorage.getItem("pcs.gallery") || "[]");
-  },
-  set gallery(value) {
-    localStorage.setItem("pcs.gallery", JSON.stringify(value));
   }
 };
 
-let currentPoster = "";
 let googleLocations = [];
+let googleReviews = [];
 
 function formData(form) {
   return Object.fromEntries(new FormData(form).entries());
@@ -61,105 +55,124 @@ async function getJson(url) {
 function switchView(viewId) {
   $$(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
   $$(".nav").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
-  if (viewId === "gallery") renderGallery();
-}
-
-function renderGallery() {
-  const gallery = storage.gallery;
-  const grid = $("#galleryGrid");
-  if (!gallery.length) {
-    grid.innerHTML = '<p class="status">No saved posters yet.</p>';
-    return;
-  }
-  grid.innerHTML = gallery.map((item, index) => `
-    <article>
-      <img src="${item.image}" alt="Saved poster ${index + 1}">
-      <div>
-        <strong>${item.businessName || "Poster"}</strong>
-        <small>${item.topic || "Campaign poster"}</small>
-      </div>
-    </article>
-  `).join("");
 }
 
 function profileLabel(location) {
   return `${location.title || location.name}${location.address ? ` - ${location.address}` : ""}`;
 }
 
-function updateDesignerProfiles() {
-  const select = $("#designerProfileSelect");
+function updateCopyProfiles() {
+  const select = $("#copyProfileSelect");
   const currentValue = select.value;
   select.innerHTML = '<option value="">Manual business details</option>' + googleLocations.map((location, index) => (
     `<option value="${index}">${profileLabel(location)}</option>`
   )).join("");
   select.value = currentValue;
+  updateReviewProfiles();
 }
 
-function applyGoogleProfile(location) {
-  const posterForm = $("#posterForm");
-  const postForm = $("#postForm");
-  posterForm.elements.businessName.value = location.title || "";
-  posterForm.elements.location.value = location.address || "";
-  if (!posterForm.elements.industry.value) posterForm.elements.industry.value = "Local business";
-  postForm.elements.locationName.value = location.name;
-  postForm.elements.accountName.value = location.accountName;
-  storage.profile = formData(posterForm);
+function updateReviewProfiles() {
+  const select = $("#reviewProfileSelect");
+  if (!select) return;
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">Choose a business</option>' + googleLocations.map((location, index) => (
+    `<option value="${index}">${profileLabel(location)}</option>`
+  )).join("");
+  select.value = currentValue;
 }
 
-function setPoster(image) {
-  currentPoster = image;
-  $("#posterImage").src = image;
-  $("#posterImage").style.display = "block";
-  $("#posterStatus").style.display = "none";
-  $("#downloadPoster").href = image;
-  $("#downloadPoster").classList.remove("hidden");
-  $("#savePoster").classList.remove("hidden");
+function applyProfileToCopy(location) {
+  const form = $("#copyForm");
+  form.elements.businessName.value = location.title || "";
+  form.elements.location.value = location.address || "";
+  if (!form.elements.industry.value) form.elements.industry.value = "Local business";
+  storage.profile = formData(form);
+}
+
+function renderGoogleLocations(list, locations) {
+  if (!locations.length) {
+    list.textContent = "No Google Business Profile locations were found for this account.";
+    return;
+  }
+  list.innerHTML = locations.map((location, index) => `
+    <button class="location" type="button" data-index="${index}">
+      <strong>${location.title || location.name}</strong>
+      <small>${location.address || location.name}</small>
+    </button>
+  `).join("");
+}
+
+function reviewDisplayName(review) {
+  return review.reviewer?.displayName || review.reviewer?.profilePhotoUrl || "Customer";
+}
+
+function reviewRating(review) {
+  const map = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+  return map[review.starRating] || review.starRating || "";
+}
+
+function renderReviews(reviews) {
+  const list = $("#reviewsList");
+  if (!reviews.length) {
+    list.textContent = "No reviews found for this profile.";
+    return;
+  }
+  list.innerHTML = reviews.map((review, index) => `
+    <button class="location review-card" type="button" data-index="${index}">
+      <strong>${reviewDisplayName(review)} - ${reviewRating(review)} stars</strong>
+      <small>${review.comment || "No written review"}</small>
+    </button>
+  `).join("");
+}
+
+async function loadGoogleLocations(statusTarget) {
+  statusTarget.textContent = "Loading profiles...";
+  const result = await getJson("/api/google-locations");
+  googleLocations = result.locations || [];
+  updateCopyProfiles();
+  return googleLocations;
 }
 
 $$(".nav").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
 
-fillForm($("#posterForm"), storage.profile);
 fillForm($("#copyForm"), storage.profile);
 
-$("#saveProfile").addEventListener("click", () => {
-  storage.profile = formData($("#posterForm"));
-  fillForm($("#copyForm"), storage.profile);
-  alert("Profile saved in this browser.");
-});
-
-$("#posterForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const payload = formData(form);
-  payload.logo = await fileToDataUrl(form.elements.logo.files[0]);
-  payload.referenceImage = await fileToDataUrl(form.elements.referenceImage.files[0]);
-
-  $("#posterStatus").style.display = "block";
-  $("#posterStatus").textContent = "Generating poster...";
-  $("#posterImage").style.display = "none";
-
+$("#loadCopyProfiles").addEventListener("click", async () => {
+  const output = $("#copyOutput");
   try {
-    const result = await postJson("/api/generate-poster", payload);
-    setPoster(result.image);
+    await loadGoogleLocations(output);
+    output.textContent = "Business profiles loaded. Choose one from the dropdown.";
   } catch (error) {
-    $("#posterStatus").textContent = error.message;
+    output.textContent = error.message;
   }
 });
 
-$("#savePoster").addEventListener("click", () => {
-  if (!currentPoster) return;
-  const details = formData($("#posterForm"));
-  storage.gallery = [{ ...details, image: currentPoster, savedAt: Date.now() }, ...storage.gallery].slice(0, 30);
-  alert("Poster saved to gallery.");
+$("#loadReviewProfiles").addEventListener("click", async () => {
+  const status = $("#reviewsList");
+  try {
+    await loadGoogleLocations(status);
+    status.textContent = "Business profiles loaded. Choose one from the dropdown.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
+});
+
+$("#copyProfileSelect").addEventListener("change", (event) => {
+  const index = event.target.value;
+  if (index === "") return;
+  const location = googleLocations[Number(index)];
+  if (location) applyProfileToCopy(location);
 });
 
 $("#copyForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("#copyOutput").textContent = "Generating copy...";
   try {
-    const result = await postJson("/api/generate-copy", formData(event.currentTarget));
+    const payload = formData(event.currentTarget);
+    storage.profile = payload;
+    const result = await postJson("/api/generate-copy", payload);
     $("#copyOutput").textContent = result.text;
   } catch (error) {
     $("#copyOutput").textContent = error.message;
@@ -168,21 +181,32 @@ $("#copyForm").addEventListener("submit", async (event) => {
 
 $("#loadLocations").addEventListener("click", async () => {
   const list = $("#locationsList");
-  list.textContent = "Loading profiles...";
   try {
-    const result = await getJson("/api/google-locations");
-    googleLocations = result.locations || [];
-    updateDesignerProfiles();
-    if (!result.locations.length) {
-      list.textContent = "No Google Business Profile locations were found for this account.";
-      return;
-    }
-    list.innerHTML = result.locations.map((location, index) => `
-      <button class="location" type="button" data-index="${index}" data-name="${location.name}" data-account="${location.accountName}">
-        <strong>${location.title || location.name}</strong>
-        <small>${location.address || location.name}</small>
-      </button>
-    `).join("");
+    const locations = await loadGoogleLocations(list);
+    renderGoogleLocations(list, locations);
+  } catch (error) {
+    list.textContent = error.message;
+  }
+});
+
+$("#loadReviews").addEventListener("click", async () => {
+  const selectedIndex = $("#reviewProfileSelect").value;
+  const selected = googleLocations[Number(selectedIndex)];
+  const list = $("#reviewsList");
+  if (!selected) {
+    list.textContent = "Choose a business first.";
+    return;
+  }
+
+  list.textContent = "Loading reviews...";
+  try {
+    const params = new URLSearchParams({
+      accountName: selected.accountName,
+      locationName: selected.name
+    });
+    const result = await getJson(`/api/google-reviews?${params.toString()}`);
+    googleReviews = result.reviews || [];
+    renderReviews(googleReviews);
   } catch (error) {
     list.textContent = error.message;
   }
@@ -194,15 +218,32 @@ $("#locationsList").addEventListener("click", (event) => {
   $$(".location").forEach((item) => item.classList.toggle("active", item === button));
   const location = googleLocations[Number(button.dataset.index)];
   if (!location) return;
-  applyGoogleProfile(location);
-  $("#designerProfileSelect").value = button.dataset.index;
+  const form = $("#postForm");
+  form.elements.locationName.value = location.name;
+  form.elements.accountName.value = location.accountName;
 });
 
-$("#designerProfileSelect").addEventListener("change", (event) => {
-  const index = event.target.value;
-  if (index === "") return;
-  const location = googleLocations[Number(index)];
-  if (location) applyGoogleProfile(location);
+$("#reviewsList").addEventListener("click", (event) => {
+  const button = event.target.closest(".review-card");
+  if (!button) return;
+  $$("#reviewsList .review-card").forEach((item) => item.classList.toggle("active", item === button));
+
+  const review = googleReviews[Number(button.dataset.index)];
+  const profile = googleLocations[Number($("#reviewProfileSelect").value)];
+  if (!review || !profile) return;
+
+  const form = $("#reviewReplyForm");
+  form.elements.reviewText.value = review.comment || "No written review";
+  form.elements.accountName.value = profile.accountName;
+  form.elements.locationName.value = profile.name;
+  form.elements.businessName.value = profile.title || "";
+  form.elements.reviewId.value = review.name || review.reviewId || "";
+  form.elements.rating.value = reviewRating(review);
+  form.elements.reviewer.value = reviewDisplayName(review);
+  form.elements.comment.value = review.reviewReply?.comment || "";
+  $("#reviewReplyStatus").textContent = review.reviewReply?.comment
+    ? "This review already has a reply. Edit and post to update it."
+    : "Review selected.";
 });
 
 $("#postForm").addEventListener("submit", async (event) => {
@@ -216,10 +257,51 @@ $("#postForm").addEventListener("submit", async (event) => {
   }
 });
 
-$("#clearGallery").addEventListener("click", () => {
-  if (!confirm("Clear all saved posters from this browser?")) return;
-  storage.gallery = [];
-  renderGallery();
+$("#uploadPosterImage").addEventListener("click", async () => {
+  const form = $("#postForm");
+  const file = form.elements.posterUpload.files[0];
+  if (!file) {
+    $("#postStatus").textContent = "Choose a PNG, JPG, or WebP image first.";
+    return;
+  }
+
+  $("#postStatus").textContent = "Uploading image...";
+  try {
+    const image = await fileToDataUrl(file);
+    const result = await postJson("/api/upload-image", { image });
+    form.elements.imageUrl.value = result.url;
+    $("#postStatus").textContent = "Image uploaded. You can post it to Google now.";
+  } catch (error) {
+    $("#postStatus").textContent = error.message;
+  }
 });
 
-renderGallery();
+$("#generateReviewReply").addEventListener("click", async () => {
+  const form = $("#reviewReplyForm");
+  if (!form.elements.reviewId.value) {
+    $("#reviewReplyStatus").textContent = "Choose a review first.";
+    return;
+  }
+
+  $("#reviewReplyStatus").textContent = "Generating AI reply...";
+  try {
+    const result = await postJson("/api/generate-review-reply", formData(form));
+    form.elements.comment.value = result.text;
+    $("#reviewReplyStatus").textContent = result.fallback
+      ? "Fallback reply generated. Edit before posting."
+      : "AI reply generated. Edit before posting.";
+  } catch (error) {
+    $("#reviewReplyStatus").textContent = error.message;
+  }
+});
+
+$("#reviewReplyForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("#reviewReplyStatus").textContent = "Posting reply...";
+  try {
+    await postJson("/api/google-review-reply", formData(event.currentTarget));
+    $("#reviewReplyStatus").textContent = "Reply posted successfully.";
+  } catch (error) {
+    $("#reviewReplyStatus").textContent = error.message;
+  }
+});
