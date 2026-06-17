@@ -226,6 +226,20 @@ $("#copyForm").addEventListener("submit", async (event) => {
   }
 });
 
+$("#copyCaption").addEventListener("click", async () => {
+  const text = $("#copyOutput").textContent.trim();
+  if (!text || text.startsWith("Generated caption")) {
+    $("#copyStatus").textContent = "Generate a caption first.";
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    $("#copyStatus").textContent = "Copied.";
+  } catch {
+    $("#copyStatus").textContent = "Copy failed. Select the text and copy manually.";
+  }
+});
+
 $("#loadLocations").addEventListener("click", async () => {
   const list = $("#locationsList");
   try {

@@ -43,7 +43,14 @@
               <label>Topic<textarea name="topic"></textarea></label>
               <button type="submit">Generate Copy</button>
             </form>
-            <pre id="copyOutput" class="panel output">Generated caption, keywords, and hashtags will appear here.</pre>
+            <div class="panel output-panel">
+              <div class="output-actions">
+                <span>Ready-to-post caption</span>
+                <button id="copyCaption" class="secondary" type="button">Copy</button>
+              </div>
+              <pre id="copyOutput" class="output">Generated caption with SEO keywords and hashtags will appear here.</pre>
+              <p id="copyStatus" class="status"></p>
+            </div>
           </div>
         </section>
 

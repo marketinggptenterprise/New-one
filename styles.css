@@ -276,6 +276,31 @@ textarea {
   color: var(--ink);
 }
 
+.output-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.output-panel .output {
+  border: 0;
+  border-radius: 0;
+  min-height: 330px;
+  margin: 0;
+  padding: 18px;
+}
+
+.output-actions {
+  min-height: 54px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px 8px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .output.compact {
   min-height: 160px;
   margin-top: 14px;
