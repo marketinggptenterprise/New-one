@@ -206,6 +206,45 @@ textarea {
   line-height: 1.4;
 }
 
+.dropzone {
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  min-height: 132px;
+  padding: 18px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.dropzone input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dropzone strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.dropzone span,
+.dropzone small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dropzone.dragging {
+  border-color: var(--brand);
+  background: #ecfdf5;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
 #posterImage {
   display: none;
   max-width: 100%;

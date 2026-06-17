@@ -34,6 +34,52 @@ function fileToDataUrl(file) {
   });
 }
 
+function setupDropzone() {
+  const zone = $("#posterDropzone");
+  const input = $("#posterUpload");
+  const label = $("#posterUploadName");
+  if (!zone || !input || !label) return;
+
+  const setFile = (file) => {
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+      label.textContent = "Please choose a JPG, PNG, or WebP image.";
+      return;
+    }
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    label.textContent = file.name;
+  };
+
+  zone.addEventListener("click", () => input.click());
+  zone.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      input.click();
+    }
+  });
+  input.addEventListener("change", () => {
+    label.textContent = input.files[0]?.name || "No image selected";
+  });
+
+  ["dragenter", "dragover"].forEach((type) => {
+    zone.addEventListener(type, (event) => {
+      event.preventDefault();
+      zone.classList.add("dragging");
+    });
+  });
+  ["dragleave", "drop"].forEach((type) => {
+    zone.addEventListener(type, (event) => {
+      event.preventDefault();
+      zone.classList.remove("dragging");
+    });
+  });
+  zone.addEventListener("drop", (event) => {
+    setFile(event.dataTransfer.files[0]);
+  });
+}
+
 async function postJson(url, payload) {
   const response = await fetch(url, {
     method: "POST",
@@ -138,6 +184,7 @@ $$(".nav").forEach((button) => {
 });
 
 fillForm($("#copyForm"), storage.profile);
+setupDropzone();
 
 $("#loadCopyProfiles").addEventListener("click", async () => {
   const output = $("#copyOutput");

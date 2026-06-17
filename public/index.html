@@ -65,7 +65,13 @@
               <input name="accountName" type="hidden" />
               <label>Caption<textarea name="summary" placeholder="Paste or write your post caption"></textarea></label>
               <label>Public image URL<input name="imageUrl" placeholder="https://example.com/poster.png" /></label>
-              <label>Upload image<input name="posterUpload" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+              <label>Upload image</label>
+              <div id="posterDropzone" class="dropzone" role="button" tabindex="0">
+                <input name="posterUpload" id="posterUpload" type="file" accept="image/png,image/jpeg,image/webp" />
+                <strong>Drop your image here</strong>
+                <span>or click to choose a JPG, PNG, or WebP</span>
+                <small id="posterUploadName">No image selected</small>
+              </div>
               <button id="uploadPosterImage" class="secondary" type="button">Upload Image to Vercel Blob</button>
               <p class="hint">Google accepts public JPG, PNG, or WebP image URLs.</p>
               <label>Button action
