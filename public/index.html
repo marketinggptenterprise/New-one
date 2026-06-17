@@ -12,65 +12,31 @@
         <div>
           <p class="eyebrow">Marketing GPT Enterprise</p>
           <h1>Poster Creator Suite</h1>
-          <p class="version">Vercel profiles build v2</p>
+          <p class="version">Publishing tools</p>
         </div>
         <nav>
-          <button class="nav active" data-view="designer">Designer</button>
-          <button class="nav" data-view="copy">Copywriter</button>
-          <button class="nav" data-view="multipost">Multi-Post</button>
+          <button class="nav active" data-view="copy">Copywriter</button>
           <button class="nav" data-view="google">Google</button>
-          <button class="nav" data-view="gallery">Gallery</button>
+          <button class="nav" data-view="reviews">Reviews</button>
         </nav>
       </aside>
 
       <section class="workspace">
-        <section id="designer" class="view active">
-          <div class="toolbar">
-            <div>
-              <p class="eyebrow">AI poster generator</p>
-              <h2>Create a campaign poster</h2>
-            </div>
-            <button id="saveProfile" class="secondary">Save Profile</button>
-          </div>
-
-          <div class="grid">
-            <form id="posterForm" class="panel">
-              <label>Google Business Profile
-                <select name="selectedProfile" id="designerProfileSelect">
-                  <option value="">Manual business details</option>
-                </select>
-              </label>
-              <label>Business name<input name="businessName" placeholder="Elite Dental Studio" /></label>
-              <label>Industry<input name="industry" placeholder="Dental clinic" /></label>
-              <label>Location<input name="location" placeholder="Austin, TX" /></label>
-              <label>Offer or topic<textarea name="topic" placeholder="Teeth whitening summer offer"></textarea></label>
-              <label>Style<input name="style" placeholder="premium, clean, bright, trustworthy" /></label>
-              <label>Preferred colors<input name="colors" placeholder="white, teal, charcoal" /></label>
-              <label>Business logo<input name="logo" type="file" accept="image/*" /></label>
-              <label>Reference image<input name="referenceImage" type="file" accept="image/*" /></label>
-              <button type="submit">Generate Poster</button>
-            </form>
-
-            <div class="preview panel">
-              <div id="posterStatus" class="status">Your generated poster will appear here.</div>
-              <img id="posterImage" alt="Generated poster" />
-              <div class="actions">
-                <a id="downloadPoster" class="secondary hidden" download="poster.png">Download</a>
-                <button id="savePoster" class="secondary hidden">Save to Gallery</button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="copy" class="view">
+        <section id="copy" class="view active">
           <div class="toolbar">
             <div>
               <p class="eyebrow">Caption and keywords</p>
               <h2>Generate local SEO copy</h2>
             </div>
+            <button id="loadCopyProfiles" class="secondary" type="button">Load Business Profiles</button>
           </div>
           <div class="grid two">
             <form id="copyForm" class="panel">
+              <label>Google Business Profile
+                <select name="selectedProfile" id="copyProfileSelect">
+                  <option value="">Manual business details</option>
+                </select>
+              </label>
               <label>Business name<input name="businessName" /></label>
               <label>Industry<input name="industry" /></label>
               <label>Location<input name="location" /></label>
@@ -78,43 +44,6 @@
               <button type="submit">Generate Copy</button>
             </form>
             <pre id="copyOutput" class="panel output">Generated caption, keywords, and hashtags will appear here.</pre>
-          </div>
-        </section>
-
-        <section id="multipost" class="view">
-          <div class="toolbar">
-            <div>
-              <p class="eyebrow">One-click publishing</p>
-              <h2>Post to Facebook and Google</h2>
-            </div>
-          </div>
-          <div class="grid two">
-            <form id="multiPostForm" class="panel">
-              <label>Caption<textarea name="summary" placeholder="Write the post caption for Facebook and Google"></textarea></label>
-              <label>Image URL<input name="imageUrl" placeholder="Upload an image below or paste a public JPG/PNG/WebP URL" /></label>
-              <label>Upload image<input name="multiUpload" type="file" accept="image/png,image/jpeg,image/webp" /></label>
-              <button id="multiUploadButton" class="secondary" type="button">Upload Image</button>
-              <label>Facebook Page ID<input name="facebookPageId" placeholder="1234567890" /></label>
-              <label>Facebook Page Access Token<input name="facebookPageAccessToken" type="password" placeholder="EAAB..." /></label>
-              <label>Button action
-                <select name="actionType">
-                  <option value="LEARN_MORE">Learn more</option>
-                  <option value="BOOK">Book</option>
-                  <option value="ORDER">Order</option>
-                  <option value="SHOP">Shop</option>
-                  <option value="SIGN_UP">Sign up</option>
-                  <option value="CALL">Call</option>
-                </select>
-              </label>
-              <label>Button URL<input name="buttonUrl" placeholder="Optional: https://yourwebsite.com" /></label>
-              <button type="submit">Post to Facebook + Google</button>
-            </form>
-            <div class="panel">
-              <button id="loadMultiLocations" type="button">Load Google Profiles</button>
-              <p class="hint">Select every Google Business Profile that should receive this post.</p>
-              <div id="multiLocationsList" class="locations">Connect Gmail first, then load profiles.</div>
-              <pre id="multiPostStatus" class="output compact">Posting results will appear here.</pre>
-            </div>
           </div>
         </section>
 
@@ -135,10 +64,10 @@
               <label>Selected profile<input name="locationName" readonly placeholder="Choose a profile on the left" /></label>
               <input name="accountName" type="hidden" />
               <label>Caption<textarea name="summary" placeholder="Paste or write your post caption"></textarea></label>
-              <label>Public poster image URL<input name="imageUrl" placeholder="https://example.com/poster.png" /></label>
-              <label>Upload poster image<input name="posterUpload" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+              <label>Public image URL<input name="imageUrl" placeholder="https://example.com/poster.png" /></label>
+              <label>Upload image<input name="posterUpload" type="file" accept="image/png,image/jpeg,image/webp" /></label>
               <button id="uploadPosterImage" class="secondary" type="button">Upload Image to Vercel Blob</button>
-              <p class="hint">Google accepts public JPG, PNG, or WebP image URLs. Built-in preview posters can be downloaded, but direct image posting needs a hosted image URL.</p>
+              <p class="hint">Google accepts public JPG, PNG, or WebP image URLs.</p>
               <label>Button action
                 <select name="actionType">
                   <option value="LEARN_MORE">Learn more</option>
@@ -156,15 +85,38 @@
           </div>
         </section>
 
-        <section id="gallery" class="view">
+        <section id="reviews" class="view">
           <div class="toolbar">
             <div>
-              <p class="eyebrow">Saved work</p>
-              <h2>Poster gallery</h2>
+              <p class="eyebrow">Google reviews</p>
+              <h2>AI review replies</h2>
             </div>
-            <button id="clearGallery" class="secondary">Clear Gallery</button>
+            <button id="loadReviewProfiles" class="secondary" type="button">Load Business Profiles</button>
           </div>
-          <div id="galleryGrid" class="gallery"></div>
+          <div class="grid two">
+            <div class="panel">
+              <label>Google Business Profile
+                <select id="reviewProfileSelect">
+                  <option value="">Choose a business</option>
+                </select>
+              </label>
+              <button id="loadReviews" type="button">Load Reviews</button>
+              <div id="reviewsList" class="locations">Choose a business, then load reviews.</div>
+            </div>
+            <form id="reviewReplyForm" class="panel">
+              <label>Selected review<textarea name="reviewText" readonly placeholder="Choose a review on the left"></textarea></label>
+              <input name="accountName" type="hidden" />
+              <input name="locationName" type="hidden" />
+              <input name="reviewId" type="hidden" />
+              <input name="businessName" type="hidden" />
+              <input name="rating" type="hidden" />
+              <input name="reviewer" type="hidden" />
+              <button id="generateReviewReply" class="secondary" type="button">Generate AI Reply</button>
+              <label>Reply<textarea name="comment" placeholder="AI reply will appear here. Edit before posting."></textarea></label>
+              <button type="submit">Post Reply to Google</button>
+              <p id="reviewReplyStatus" class="status"></p>
+            </form>
+          </div>
         </section>
       </section>
     </main>
